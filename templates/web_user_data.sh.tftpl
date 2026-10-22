@@ -1,0 +1,66 @@
+#!/bin/bash
+# Web tier bootstrap (Amazon Linux 2023)
+# Apache serves the page and reverse-proxies /api/* to the internal app ALB.
+set -euxo pipefail
+exec > >(tee /var/log/user-data.log) 2>&1
+
+dnf update -y
+dnf install -y httpd
+
+# IMDSv2: get a session token first, then read instance details.
+TOKEN=$(curl -sS -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 300")
+INSTANCE_ID=$(curl -sS -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-id)
+AZ=$(curl -sS -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/placement/availability-zone)
+
+# Web tier talks to the logic tier through the internal ALB, never directly to instances.
+cat > /etc/httpd/conf.d/app-proxy.conf <<EOF
+ProxyPass        /api/ http://${app_alb_dns}/ timeout=10
+ProxyPassReverse /api/ http://${app_alb_dns}/
+EOF
+
+echo "OK" > /var/www/html/health.html
+
+cat > /var/www/html/index.html <<EOF
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Three-Tier on AWS</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 760px; margin: 40px auto; padding: 0 16px; color: #1f2937; }
+  .card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin: 12px 0; }
+  code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; }
+  pre { background: #f9fafb; padding: 12px; border-radius: 6px; overflow-x: auto; }
+</style>
+</head>
+<body>
+  <h1>Welcome to the Web Server</h1>
+  <div class="card">
+    <h2>Web tier</h2>
+    <p>Served by <code>$INSTANCE_ID</code> in <code>$AZ</code></p>
+    <p>Refresh the page to watch the load balancer switch between web servers.</p>
+  </div>
+  <div class="card">
+    <h2>App tier</h2>
+    <pre id="app">loading...</pre>
+  </div>
+  <div class="card">
+    <h2>Database tier</h2>
+    <pre id="db">loading...</pre>
+  </div>
+<script>
+  function load(path, id) {
+    fetch(path)
+      .then(function (r) { return r.json(); })
+      .then(function (d) { document.getElementById(id).textContent = JSON.stringify(d, null, 2); })
+      .catch(function (e) { document.getElementById(id).textContent = "unreachable: " + e; });
+  }
+  load("/api/info", "app");
+  load("/api/db", "db");
+</script>
+</body>
+</html>
+EOF
+
+systemctl enable --now httpd

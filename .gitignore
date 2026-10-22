@@ -1,0 +1,29 @@
+# Terraform working files
+.terraform/
+*.tfplan
+tfplan
+
+# State can contain secrets. Never commit it.
+*.tfstate
+*.tfstate.*
+.terraform.tfstate.lock.info
+
+# Real variable and backend values (the .example versions are committed)
+*.tfvars
+*.tfvars.json
+backend.hcl
+
+# Local overrides and crash logs
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+crash.log
+crash.*.log
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# NOTE: .terraform.lock.hcl is deliberately NOT ignored. Commit it.

@@ -1,0 +1,60 @@
+name: terraform-ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint-and-validate:
+    name: fmt, validate, tflint, checkov
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: latest
+
+      - name: terraform fmt
+        run: terraform fmt -check -recursive -diff
+
+      # -backend=false: no AWS credentials needed in CI for static checks.
+      - name: terraform validate (main stack)
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
+
+      - name: terraform validate (bootstrap)
+        working-directory: bootstrap
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.tflint.d/plugins
+          key: tflint-${{ hashFiles('.tflint.hcl') }}
+
+      - uses: terraform-linters/setup-tflint@v4
+
+      - name: tflint
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          tflint --init
+          tflint --recursive --config "$GITHUB_WORKSPACE/.tflint.hcl" --format compact
+
+      # Reports security findings without failing the build. The known lab
+      # trade-offs (HTTP-only ALB, single-AZ RDS) are documented in the README.
+      - name: checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: .
+          framework: terraform
+          quiet: true
+          soft_fail: true

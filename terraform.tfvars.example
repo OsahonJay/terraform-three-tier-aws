@@ -1,0 +1,16 @@
+# Copy to terraform.tfvars only if you want to override defaults.
+# Everything has a sensible default, so this file is optional.
+
+aws_region  = "eu-west-2"
+project     = "three-tier"
+environment = "dev"
+owner       = "osahon"
+
+# Cheapest working setup. For a resilience demo set single_nat_gateway = false
+# and db_multi_az = true (roughly doubles NAT and DB cost).
+single_nat_gateway = true
+db_multi_az        = false
+
+instance_type = "t3.micro"
+web_asg       = { min = 2, max = 4, desired = 2 }
+app_asg       = { min = 2, max = 4, desired = 2 }

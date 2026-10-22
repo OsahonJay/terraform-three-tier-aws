@@ -1,0 +1,6 @@
+# Copy to backend.hcl and replace the bucket with the name printed by bootstrap/.
+bucket       = "REPLACE_WITH_BOOTSTRAP_OUTPUT"
+key          = "three-tier/dev/terraform.tfstate"
+region       = "eu-west-2"
+encrypt      = true
+use_lockfile = true
