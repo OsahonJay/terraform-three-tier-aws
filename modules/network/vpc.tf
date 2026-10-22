@@ -25,6 +25,7 @@ resource "aws_default_security_group" "default" {
 
 # Presentation tier: holds the public web ALB, the web servers and the NAT Gateway.
 resource "aws_subnet" "public" {
+  #checkov:skip=CKV_AWS_130:By design. Web servers live in public subnets (per the brief) and need public IPs for outbound traffic via the IGW; inbound is locked to the ALB by security group
   count = length(var.azs)
 
   vpc_id                  = aws_vpc.this.id

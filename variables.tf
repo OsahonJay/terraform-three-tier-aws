@@ -27,10 +27,15 @@ variable "owner" {
   default     = "osahon"
 }
 
-variable "az_count" {
-  description = "Number of availability zones to use. Must match the length of each subnet CIDR list."
-  type        = number
-  default     = 2
+variable "azs" {
+  description = "Availability zones to use, by name. One subnet of each type is created per AZ."
+  type        = list(string)
+  default     = ["eu-west-2a", "eu-west-2b"]
+
+  validation {
+    condition     = length(var.azs) >= 2
+    error_message = "Use at least two AZs. ALBs and RDS subnet groups require it."
+  }
 }
 
 variable "vpc_cidr" {
@@ -123,6 +128,12 @@ variable "db_username" {
   description = "RDS master username."
   type        = string
   default     = "appadmin"
+}
+
+variable "log_retention_days" {
+  description = "Days to keep VPC flow logs and RDS logs in CloudWatch."
+  type        = number
+  default     = 7
 }
 
 variable "db_multi_az" {

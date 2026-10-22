@@ -18,6 +18,11 @@ output "db_subnet_ids" {
   value       = aws_subnet.db[*].id
 }
 
+output "flow_log_group" {
+  description = "CloudWatch log group holding VPC flow logs."
+  value       = aws_cloudwatch_log_group.flow_logs.name
+}
+
 output "nat_public_ips" {
   description = "Elastic IPs of the NAT Gateway(s). App servers appear on the internet as these."
   value       = aws_eip.nat[*].public_ip

@@ -66,6 +66,12 @@ variable "deletion_protection" {
   default     = false
 }
 
+variable "log_retention_days" {
+  description = "Days to keep RDS error and slow query logs."
+  type        = number
+  default     = 7
+}
+
 variable "tags" {
   description = "Tags applied to every resource in the module."
   type        = map(string)

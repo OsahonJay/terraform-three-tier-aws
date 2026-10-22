@@ -33,6 +33,12 @@ variable "single_nat_gateway" {
   type        = bool
 }
 
+variable "flow_log_retention_days" {
+  description = "Days to keep VPC flow logs in CloudWatch."
+  type        = number
+  default     = 7
+}
+
 variable "tags" {
   description = "Tags applied to every resource in the module."
   type        = map(string)

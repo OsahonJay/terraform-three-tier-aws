@@ -23,6 +23,11 @@ output "nat_public_ips" {
   value       = module.network.nat_public_ips
 }
 
+output "flow_log_group" {
+  description = "CloudWatch log group with VPC flow logs. Look for REJECT lines when debugging."
+  value       = module.network.flow_log_group
+}
+
 output "vpc_id" {
   description = "VPC ID."
   value       = module.network.vpc_id

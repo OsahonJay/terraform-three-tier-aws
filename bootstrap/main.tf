@@ -27,6 +27,9 @@ provider "aws" {
 data "aws_caller_identity" "current" {}
 
 resource "aws_s3_bucket" "state" {
+  #checkov:skip=CKV_AWS_18:Access logging needs a second bucket; versioning already keeps every state change
+  #checkov:skip=CKV_AWS_144:Cross-region replication is overkill for a single-user lab state bucket
+  #checkov:skip=CKV2_AWS_62:No consumer for S3 event notifications on a state bucket
   # Account ID keeps the name globally unique without guessing.
   bucket = "${var.bucket_prefix}-${data.aws_caller_identity.current.account_id}-${var.aws_region}"
 
@@ -48,8 +51,10 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "state" {
 
   rule {
     apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
+      # aws:kms with no key ID uses the AWS-managed aws/s3 key: KMS encryption with no key to manage.
+      sse_algorithm = "aws:kms"
     }
+    bucket_key_enabled = true
   }
 }
 
@@ -72,6 +77,10 @@ resource "aws_s3_bucket_lifecycle_configuration" "state" {
 
     noncurrent_version_expiration {
       noncurrent_days = 90
+    }
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
     }
   }
 }

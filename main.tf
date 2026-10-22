@@ -1,5 +1,11 @@
-data "aws_availability_zones" "available" {
+# Pin the exact AZs by name, so the subnet layout never changes when AWS adds a zone.
+data "aws_availability_zones" "selected" {
   state = "available"
+
+  filter {
+    name   = "zone-name"
+    values = var.azs
+  }
 }
 
 # Latest Amazon Linux 2023 AMI, published by AWS as a public SSM parameter.
@@ -9,7 +15,7 @@ data "aws_ssm_parameter" "al2023" {
 
 locals {
   name = "${var.project}-${var.environment}"
-  azs  = slice(data.aws_availability_zones.available.names, 0, var.az_count)
+  azs  = data.aws_availability_zones.selected.names
 
   tags = {
     Project     = var.project
@@ -32,6 +38,8 @@ module "network" {
   app_subnet_cidrs    = var.app_subnet_cidrs
   db_subnet_cidrs     = var.db_subnet_cidrs
   single_nat_gateway  = var.single_nat_gateway
+
+  flow_log_retention_days = var.log_retention_days
 }
 
 module "security" {
@@ -57,6 +65,7 @@ module "database" {
   db_name            = var.db_name
   username           = var.db_username
   multi_az           = var.db_multi_az
+  log_retention_days = var.log_retention_days
 }
 
 # ---------------------------------------------------------------------------

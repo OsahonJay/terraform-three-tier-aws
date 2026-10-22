@@ -34,7 +34,7 @@ flowchart TB
 
 | Tier | Resources |
 |---|---|
-| Network | VPC, 2 public, 2 private app and 2 isolated DB subnets, Internet Gateway, NAT Gateway with Elastic IP, public / app / DB route tables, locked-down default security group |
+| Network | VPC, 2 public, 2 private app and 2 isolated DB subnets, Internet Gateway, NAT Gateway with Elastic IP, public / app / DB route tables, locked-down default security group, VPC flow logs to CloudWatch |
 | Presentation | Internet-facing ALB, target group with health checks, Auto Scaling group of Apache servers that proxy `/api/*` to the app tier |
 | Logic | Internal ALB, Auto Scaling group running a small Python API that reads and writes to MySQL |
 | Data | RDS MySQL 8.4 in a DB subnet group spanning both AZs, encrypted storage, password generated and held in Secrets Manager |
@@ -53,6 +53,24 @@ flowchart TB
 | `terraform apply` after each step | Modules, plus `-target` commands to apply step by step | The final code still applies cleanly from empty in one run. |
 
 Known lab trade-offs: the ALB listens on HTTP only (no domain or ACM certificate), RDS is single-AZ, one NAT Gateway is shared by both AZs. Each is one variable or one listener away from production settings.
+
+## Security scanning
+
+Every push runs `terraform fmt`, `terraform validate`, `tflint` and `checkov`. **Checkov fails the build on any new finding.** Current result: 204 passed, 0 failed, 35 skipped.
+
+Findings were handled in one of three ways:
+
+| Approach | Examples |
+|---|---|
+| **Fixed** | VPC flow logs, RDS IAM authentication, RDS error and slow query logs, AZs pinned by name, KMS encryption and multipart cleanup on the state bucket |
+| **Accepted for the lab, with a reason** | HTTPS (needs a domain), ALB and RDS deletion protection (would block `destroy`), Multi-AZ RDS (cost), WAF and ALB access logs (cost and scope), short log retention |
+| **False positives** | Security groups "not attached" (they are, in other modules), port 80 "open to the world" on rules whose source is a security group |
+
+Each skip sits next to the resource it applies to as `#checkov:skip=ID:reason`, so the reasoning is reviewed with the code and nothing is hidden in a global ignore list:
+
+```bash
+grep -rn "checkov:skip" --include=*.tf .
+```
 
 ## Repo layout
 
@@ -190,5 +208,6 @@ Then check the Billing dashboard and EC2 > Elastic IPs for anything left over. T
 ## Troubleshooting
 
 - **Targets unhealthy:** `aws ssm start-session` into the instance and read `/var/log/user-data.log`. For the app tier also check `journalctl -u app`.
+- **Suspect a security group is blocking traffic:** search the flow logs for rejected packets: `aws logs filter-log-events --log-group-name "$(terraform output -raw flow_log_group)" --filter-pattern REJECT --max-items 20`
 - **Page loads but app or DB shows "unreachable":** the app tier is still booting, or RDS is still creating. Wait two minutes and refresh.
 - **`start-session` fails:** the instance needs a minute after boot to register with SSM, and the Session Manager plugin must be installed locally.

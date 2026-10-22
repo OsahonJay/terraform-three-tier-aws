@@ -1,4 +1,8 @@
 resource "aws_lb" "this" {
+  #checkov:skip=CKV_AWS_150:Deletion protection would block terraform destroy in a lab
+  #checkov:skip=CKV_AWS_91:Access logs need a dedicated S3 bucket and policy; out of scope for the lab, flow logs cover network debugging
+  #checkov:skip=CKV2_AWS_28:WAF costs about $5/month plus per-rule fees; out of scope for the lab
+  #checkov:skip=CKV2_AWS_20:HTTPS needs a domain and ACM certificate, not part of this lab (see README)
   name                       = "${var.name}-alb"
   internal                   = var.internal
   load_balancer_type         = "application"
@@ -10,6 +14,7 @@ resource "aws_lb" "this" {
 }
 
 resource "aws_lb_target_group" "this" {
+  #checkov:skip=CKV_AWS_378:ALB to instance traffic stays inside the VPC; TLS is terminated at the ALB once a certificate exists
   name                 = "${var.name}-tg"
   port                 = var.target_port
   protocol             = "HTTP"
@@ -30,6 +35,8 @@ resource "aws_lb_target_group" "this" {
 }
 
 resource "aws_lb_listener" "http" {
+  #checkov:skip=CKV_AWS_2:HTTPS needs a domain and ACM certificate, not part of this lab (see README)
+  #checkov:skip=CKV_AWS_103:HTTPS needs a domain and ACM certificate, not part of this lab (see README)
   load_balancer_arn = aws_lb.this.arn
   port              = 80
   protocol          = "HTTP"
